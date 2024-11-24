@@ -130,9 +130,7 @@ class VideoProcessor(VideoProcessorBase):
 
         return av.VideoFrame.from_ndarray(processed_img, format="rgb24")
 
-# Fungsi untuk kamera dengan kategori
 def display_camera():
-    def display_camera():
     """Displays real-time webcam feed with dynamic processing options and histograms."""
     # Initialize session state for camera
     if 'run_camera' not in st.session_state:
