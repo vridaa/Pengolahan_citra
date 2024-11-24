@@ -133,12 +133,15 @@ class VideoProcessor(VideoProcessorBase):
 # Fungsi untuk kamera dengan kategori
 def display_camera():
     st.subheader("Real-Time Camera Feed with Processing")
+
+    # Select category and processing method
     category = st.selectbox("Select Category", list(categories.keys()))
     method = st.selectbox("Select Processing Method", categories[category])
 
-    # Update parameter berdasarkan metode yang dipilih
+    # Update parameters dynamically
     update_parameters(method)
 
+    # WebRTC streamer
     ctx = webrtc_streamer(
         key="camera",
         video_processor_factory=VideoProcessor,
@@ -146,19 +149,32 @@ def display_camera():
         media_stream_constraints={"video": True, "audio": False},
     )
 
+    # Assign selected method to VideoProcessor
     if ctx.video_processor:
         ctx.video_processor.method = method
 
-    # Menampilkan dua kolom: tampilan asli dan hasil
+    # Display original and processed frames with histograms
     col1, col2 = st.columns(2)
-    if ctx.video_processor:
-        col1.image(ctx.video_processor.recv, caption="Original Frame", channels="RGB", use_column_width=True)
-        col2.image(ctx.video_processor.recv, caption="Processed Frame", channels="RGB", use_column_width=True)
 
-        # Menampilkan histogram
-    st.markdown("---")
-    st.pyplot(plot_histogram(ctx.video_processor.recv, "Original Histogram"))
-    st.pyplot(plot_histogram(ctx.video_processor.recv, "Processed Histogram"))
+    # Check if video frames are available
+    if ctx.state.playing:
+        frame_placeholder = st.empty()
+
+        while ctx.state.playing:
+            if ctx.video_processor:
+                # Retrieve the current frame
+                original_frame = ctx.video_processor.recv.to_ndarray(format="bgr24")
+                original_frame_rgb = cv2.cvtColor(original_frame, cv2.COLOR_BGR2RGB)
+                processed_frame = process_image(original_frame_rgb, method)
+
+                # Display original and processed frames
+                col1.image(original_frame_rgb, caption="Original Frame", use_column_width=True, channels="RGB")
+                col2.image(processed_frame, caption="Processed Frame", use_column_width=True, channels="RGB")
+
+                # Plot histograms
+                st.markdown("---")
+                col1.pyplot(plot_histogram(original_frame_rgb, "Original Frame Histogram"))
+                col2.pyplot(plot_histogram(processed_frame, "Processed Frame Histogram"))
 
 
 
