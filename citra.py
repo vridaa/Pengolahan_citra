@@ -116,19 +116,20 @@ def upload_image():
         col1.pyplot(plot_histogram(image_array, "Original Histogram"))
         col2.pyplot(plot_histogram(processed_image, "Processed Histogram"))
 
-# Video Processor untuk WebRTC
 class VideoProcessor(VideoProcessorBase):
     def __init__(self):
         self.method = None
 
     def recv(self, frame):
-        img = frame.to_ndarray(format="bgr24")
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        try:
+            img = frame.to_ndarray(format="bgr24")
+            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            processed_img = process_image(img_rgb, self.method) if self.method else img_rgb
+            return av.VideoFrame.from_ndarray(processed_img, format="rgb24")
+        except Exception as e:
+            st.error(f"Error in video processing: {e}")
+            return frame
 
-        # Proses gambar
-        processed_img = process_image(img_rgb, self.method) if self.method else img_rgb
-
-        return av.VideoFrame.from_ndarray(processed_img, format="rgb24")
 
 def display_camera():
     """Displays real-time webcam feed with processing and histograms."""
@@ -145,7 +146,7 @@ def display_camera():
     ctx = webrtc_streamer(
         key="camera",
         video_processor_factory=VideoProcessor,
-        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+        rtc_configuration=rtc_configuration,
         media_stream_constraints={"video": True, "audio": False},
     )
 
