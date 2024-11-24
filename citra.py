@@ -148,12 +148,20 @@ def display_camera():
     hist_col1, hist_col2 = st.columns(2)
 
     # WebRTC streamer
+
     ctx = webrtc_streamer(
-        key="camera",
-        video_processor_factory=VideoProcessor,
-        rtc_configuration={"iceServers": [{"urls": "stun:stun.l.google.com:19302"}]},
-        media_stream_constraints={"video": True, "audio": False},
-    )
+    key="camera",
+    video_processor_factory=VideoProcessor,
+    rtc_configuration={
+        "iceServers": [
+            {"urls": ["stun:stun.l.google.com:19302"]},
+            {"urls": ["stun:stun1.l.google.com:19302"]},
+            {"urls": ["stun:stun2.l.google.com:19302"]},
+        ]
+    },
+    media_stream_constraints={"video": True, "audio": False},
+)
+
 
     if ctx.video_processor:
         # Assign selected method to VideoProcessor
