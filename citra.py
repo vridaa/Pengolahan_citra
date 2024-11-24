@@ -1,6 +1,7 @@
 import streamlit as st
 import cv2
 import numpy as np
+from PIL import Image
 import matplotlib.pyplot as plt
 from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
 import av
@@ -53,24 +54,11 @@ def process_image(image_array, method):
     elif method == "Treshold":
         gray = cv2.cvtColor(image_array, cv2.COLOR_RGB2GRAY)
         return cv2.threshold(gray, parameter['batas'], 255, cv2.THRESH_BINARY)[1]
-    elif method == "RGB":
-        image_array[:, :, 0] = np.clip(image_array[:, :, 0] * (parameter.get("Red", 1.0)), 0, 255)
-        image_array[:, :, 1] = np.clip(image_array[:, :, 1] * (parameter.get("Green", 1.0)), 0, 255)
-        image_array[:, :, 2] = np.clip(image_array[:, :, 2] * (parameter.get("Blue", 1.0)), 0, 255)
-        return image_array
     elif method == "Gaussian Noise":
         noise = np.random.normal(0, 25, image_array.shape).astype(np.uint8)
         return cv2.add(image_array, noise)
     elif method == "Brightness Adjustment":
         return np.clip(image_array + parameter['brightness_beta'], 0, 255).astype(np.uint8)
-    elif method == "Contrast Adjustment":
-        return cv2.convertScaleAbs(image_array, alpha=parameter['contrast_alpha'], beta=0)
-    elif method == "Smoothing":
-        kernel_size = parameter['smoothing_kernel']
-        return cv2.GaussianBlur(image_array, (kernel_size, kernel_size), 0)
-    elif method == "Sharpening":
-        kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
-        return cv2.filter2D(image_array, -1, kernel)
     elif method == "Edge Detection":
         gray = cv2.cvtColor(image_array, cv2.COLOR_RGB2GRAY)
         edges = cv2.Canny(gray, parameter['edge_detection_low'], parameter['edge_detection_high'])
@@ -87,9 +75,6 @@ def process_image(image_array, method):
         center = (w // 2, h // 2)
         M = cv2.getRotationMatrix2D(center, parameter['rotation_angle'], 1.0)
         return cv2.warpAffine(image_array, M, (w, h))
-    elif method == "Translasi":
-        M = np.float32([[1, 0, parameter.get('translasi_m', 0)], [0, 1, parameter.get('translasi_n', 0)]])
-        return cv2.warpAffine(image_array, M, (image_array.shape[1], image_array.shape[0]))
     return image_array
 
 # Fungsi untuk menampilkan histogram
@@ -117,9 +102,10 @@ def upload_image():
         processed_image = process_image(image_array, method)
 
         col1, col2 = st.columns(2)
-        col1.image(image, caption="Original Image", use_column_width=True)
+        col1.image(image_array, caption="Original Image", use_column_width=True)
         col2.image(processed_image, caption="Processed Image", use_column_width=True)
 
+        st.markdown("---")
         col1.pyplot(plot_histogram(image_array, "Original Histogram"))
         col2.pyplot(plot_histogram(processed_image, "Processed Histogram"))
 
@@ -156,20 +142,10 @@ def display_camera():
     if ctx.video_processor:
         ctx.video_processor.method = method
 
-    # Menampilkan dua kolom: tampilan asli dan hasil
-    col1, col2 = st.columns(2)
-    if ctx.video_processor:
-        col1.image(ctx.video_processor.recv, caption="Original Frame", channels="RGB", use_column_width=True)
-        col2.image(ctx.video_processor.recv, caption="Processed Frame", channels="RGB", use_column_width=True)
-
-        # Menampilkan histogram
-        st.markdown("---")
-        st.pyplot(plot_histogram(ctx.video_processor.recv, "Original Histogram"))
-        st.pyplot(plot_histogram(ctx.video_processor.recv, "Processed Histogram"))
-
 # Sidebar menu
 menu = st.sidebar.radio("Choose Option", ["Upload Image", "Use Camera"])
 if menu == "Upload Image":
-    st.write("Upload Image functionality goes here.")
+    st.subheader("Upload and Process Image")
+    upload_image()
 else:
     display_camera()
