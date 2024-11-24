@@ -130,8 +130,8 @@ class VideoProcessor(VideoProcessorBase):
 
         return av.VideoFrame.from_ndarray(processed_img, format="rgb24")
 
-# Fungsi untuk kamera dengan kategori
 def display_camera():
+    """Displays real-time webcam feed with processing and histograms."""
     st.subheader("Real-Time Camera Feed with Processing")
 
     # Select category and processing method
@@ -149,33 +149,34 @@ def display_camera():
         media_stream_constraints={"video": True, "audio": False},
     )
 
-    # Assign selected method to VideoProcessor
     if ctx.video_processor:
+        # Assign selected method to VideoProcessor
         ctx.video_processor.method = method
 
-    # Display original and processed frames with histograms
+    # Real-time display for original and processed frames
     col1, col2 = st.columns(2)
 
-    # Check if video frames are available
     if ctx.state.playing:
-        frame_placeholder = st.empty()
-
         while ctx.state.playing:
             if ctx.video_processor:
-                # Retrieve the current frame
-                original_frame = ctx.video_processor.recv.to_ndarray(format="bgr24")
+                # Access the original frame from VideoProcessor
+                original_frame = ctx.video_processor.recv().to_ndarray(format="bgr24")
                 original_frame_rgb = cv2.cvtColor(original_frame, cv2.COLOR_BGR2RGB)
+
+                # Process the frame using the selected method
                 processed_frame = process_image(original_frame_rgb, method)
 
                 # Display original and processed frames
                 col1.image(original_frame_rgb, caption="Original Frame", use_column_width=True, channels="RGB")
                 col2.image(processed_frame, caption="Processed Frame", use_column_width=True, channels="RGB")
 
-                # Plot histograms
+                # Display histograms for original and processed frames
                 st.markdown("---")
                 col1.pyplot(plot_histogram(original_frame_rgb, "Original Frame Histogram"))
                 col2.pyplot(plot_histogram(processed_frame, "Processed Frame Histogram"))
 
+                # Sleep to avoid overwhelming the app
+                time.sleep(0.1)
 
 
 
