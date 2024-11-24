@@ -1,0 +1,20 @@
+# Abaikan folder virtual environment
+env/
+venv/
+
+# Abaikan file cache Python
+*.pyc
+__pycache__/
+
+# Abaikan log atau file sementara
+*.log
+*.tmp
+
+# Abaikan file sistem
+.DS_Store
+Thumbs.db
+
+# Abaikan hasil build atau distribusi
+dist/
+build/
+*.egg-info/
