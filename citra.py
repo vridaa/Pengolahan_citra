@@ -142,6 +142,11 @@ def display_camera():
     # Update parameters dynamically
     update_parameters(method)
 
+    # Create columns for original feed, processed feed, and histograms
+    col1, col2 = st.columns(2)
+    st.markdown("---")  # Add separator for histograms
+    hist_col1, hist_col2 = st.columns(2)
+
     # WebRTC streamer
     ctx = webrtc_streamer(
         key="camera",
@@ -153,6 +158,31 @@ def display_camera():
     if ctx.video_processor:
         # Assign selected method to VideoProcessor
         ctx.video_processor.method = method
+
+        # Continuously process frames for real-time display
+        while ctx.state.playing:
+            try:
+                # Access the original frame
+                frame = ctx.video_processor.recv().to_ndarray(format="bgr24")
+                original_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+                # Process the frame using the selected method
+                processed_frame = process_image(original_frame, method)
+
+                # Display original and processed frames
+                col1.image(original_frame, caption="Original Frame", channels="RGB", use_column_width=True)
+                col2.image(processed_frame, caption="Processed Frame", channels="RGB", use_column_width=True)
+
+                # Display histograms for original and processed frames
+                hist_col1.pyplot(plot_histogram(original_frame, "Original Frame Histogram"))
+                hist_col2.pyplot(plot_histogram(processed_frame, "Processed Frame Histogram"))
+
+                # Sleep to avoid overwhelming the app
+                time.sleep(0.1)
+            except Exception as e:
+                st.error(f"Error in processing frame: {e}")
+                break
+
 
 # Sidebar menu
 menu = st.sidebar.radio("Choose Option", ["Upload Image", "Use Camera"])
