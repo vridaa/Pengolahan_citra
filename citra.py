@@ -146,40 +146,13 @@ def display_camera():
     ctx = webrtc_streamer(
         key="camera",
         video_processor_factory=VideoProcessor,
-        rtc_configuration=rtc_configuration,
+        rtc_configuration={"iceServers": [{"urls": "stun:stun.l.google.com:19302"}]},
         media_stream_constraints={"video": True, "audio": False},
     )
 
     if ctx.video_processor:
         # Assign selected method to VideoProcessor
         ctx.video_processor.method = method
-
-    # Real-time display for original and processed frames
-    col1, col2 = st.columns(2)
-
-    if ctx.state.playing:
-        while ctx.state.playing:
-            if ctx.video_processor:
-                # Access the original frame from VideoProcessor
-                original_frame = ctx.video_processor.recv().to_ndarray(format="bgr24")
-                original_frame_rgb = cv2.cvtColor(original_frame, cv2.COLOR_BGR2RGB)
-
-                # Process the frame using the selected method
-                processed_frame = process_image(original_frame_rgb, method)
-
-                # Display original and processed frames
-                col1.image(original_frame_rgb, caption="Original Frame", use_column_width=True, channels="RGB")
-                col2.image(processed_frame, caption="Processed Frame", use_column_width=True, channels="RGB")
-
-                # Display histograms for original and processed frames
-                st.markdown("---")
-                col1.pyplot(plot_histogram(original_frame_rgb, "Original Frame Histogram"))
-                col2.pyplot(plot_histogram(processed_frame, "Processed Frame Histogram"))
-
-                # Sleep to avoid overwhelming the app
-                time.sleep(0.1)
-
-
 
 # Sidebar menu
 menu = st.sidebar.radio("Choose Option", ["Upload Image", "Use Camera"])
