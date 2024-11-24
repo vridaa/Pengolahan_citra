@@ -78,13 +78,20 @@ def process_image(image_array, method):
     return image_array
 
 # Fungsi untuk menampilkan histogram
-def plot_histogram(image, title):
+def plot_histogram(image, title="Histogram"):
+    """Plots the histogram of an image, handling both grayscale and RGB images."""
     fig, ax = plt.subplots()
-    if len(image.shape) == 2:  # Grayscale
-        ax.hist(image.ravel(), bins=256, color='black')
-    else:  # RGB
-        for i, color in enumerate(['red', 'green', 'blue']):
-            ax.hist(image[:, :, i].ravel(), bins=256, color=color, alpha=0.5)
+    
+    # Check if the image has multiple color channels (RGB) or is grayscale
+    if len(image.shape) == 3:  # RGB image
+        color = ('r', 'g', 'b')
+        for i, col in enumerate(color):
+            histr = cv2.calcHist([image], [i], None, [256], [0, 256])
+            ax.plot(histr, color=col)
+    else:  # Grayscale image
+        histr = cv2.calcHist([image], [0], None, [256], [0, 256])
+        ax.plot(histr, color='black')  # Use black for grayscale histogram
+    
     ax.set_title(title)
     return fig
 
@@ -125,22 +132,71 @@ class VideoProcessor(VideoProcessorBase):
 
 # Fungsi untuk kamera dengan kategori
 def display_camera():
-    st.subheader("Real-Time Camera Feed with Processing")
-    category = st.selectbox("Select Category", list(categories.keys()))
-    method = st.selectbox("Select Processing Method", categories[category])
+    def display_camera():
+    """Displays real-time webcam feed with dynamic processing options and histograms."""
+    # Initialize session state for camera
+    if 'run_camera' not in st.session_state:
+        st.session_state['run_camera'] = False  # Initialize camera state
 
-    # Update parameter berdasarkan metode yang dipilih
+    # Attempt to access the camera
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        st.warning("Tidak dapat membuka kamera. Pastikan kamera Anda terhubung.")
+        return  # Exit the function if the camera cannot be accessed
+
+    # Define layout with two columns
+    col1, col2 = st.columns(2)
+    stframe_original = col1.empty()
+    stframe_hist_original = col1.empty()
+    stframe_processed = col2.empty()
+    stframe_hist_processed = col2.empty()
+
+    # Main category selection
+    category = st.selectbox("Pilih Kategori", list(categories.keys()), key="category_select")
+
+    # Sub-method selection based on the main category
+    method = st.selectbox("Pilih Metode Pengolahan", categories[category], key="method_select")
+
+    # Update parameters dynamically based on the selected method
     update_parameters(method)
 
-    ctx = webrtc_streamer(
-        key="camera",
-        video_processor_factory=VideoProcessor,
-        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-        media_stream_constraints={"video": True, "audio": False},
-    )
+    # Button to start and stop the camera feed
+    if st.button("Mulai Kamera" if not st.session_state['run_camera'] else "Stop Kamera"):
+        st.session_state['run_camera'] = not st.session_state['run_camera']
 
-    if ctx.video_processor:
-        ctx.video_processor.method = method
+    # Main loop for camera feed
+    while st.session_state['run_camera']:
+        ret, frame = cap.read()
+        if not ret:
+            st.warning("Gagal mendapatkan frame dari kamera.")
+            break
+
+        # Convert frame to RGB format for consistent processing
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # Process the frame based on the selected method
+        processed_frame = process_image(frame_rgb, method)
+
+        # Display the original frame in the first column
+        stframe_original.image(frame_rgb, caption="Gambar Asli (Real-Time)", channels="RGB", use_column_width=True)
+        stframe_hist_original.pyplot(plot_histogram(frame_rgb, "Histogram Warna (Asli)"))
+
+        # Ensure processed frame has RGB channels for consistency
+        if len(processed_frame.shape) == 2:  # If grayscale, convert to RGB for display
+            processed_frame = cv2.cvtColor(processed_frame, cv2.COLOR_GRAY2RGB)
+
+        # Display the processed frame in the second column
+        stframe_processed.image(processed_frame, caption=f"Gambar Setelah Diolah ({method})", channels="RGB", use_column_width=True)
+        stframe_hist_processed.pyplot(plot_histogram(processed_frame, "Histogram Warna (Setelah Diolah)"))
+
+        # Adding a short delay to reduce CPU load
+        time.sleep(0.1)
+
+    # Release the camera when stopping the feed
+    cap.release()
+    cv2.destroyAllWindows()
+
+
 
 # Sidebar menu
 menu = st.sidebar.radio("Choose Option", ["Upload Image", "Use Camera"])
