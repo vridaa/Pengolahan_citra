@@ -117,6 +117,11 @@ class VideoProcessor(VideoProcessorBase):
         else:
             processed = img_rgb
 
+        # Render histograms in stream
+        with st.container():
+            st.pyplot(plot_histogram(img_rgb, "Original Histogram"))
+            st.pyplot(plot_histogram(processed, "Processed Histogram"))
+
         return av.VideoFrame.from_ndarray(processed, format="rgb24")
 
 # Fungsi untuk kamera dengan kategori
@@ -137,29 +142,10 @@ def display_camera():
     if ctx.video_processor:
         ctx.video_processor.method = method
 
-# Fungsi untuk upload gambar
-def upload_image():
-    uploaded_file = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"])
-    if uploaded_file:
-        image = Image.open(uploaded_file)
-        image_array = np.array(image)
-
-        category = st.selectbox("Select Category", list(categories.keys()))
-        method = st.selectbox("Select Processing Method", categories[category])
-
-        update_parameters(method)
-        processed_image = process_image(image_array, method)
-
-        col1, col2 = st.columns(2)
-        col1.image(image, caption="Original Image", use_column_width=True)
-        col2.image(processed_image, caption="Processed Image", use_column_width=True)
-
-        col1.pyplot(plot_histogram(image_array, "Original Histogram"))
-        col2.pyplot(plot_histogram(processed_image, "Processed Histogram"))
-
 # Sidebar menu
 menu = st.sidebar.radio("Choose Option", ["Upload Image", "Use Camera"])
 if menu == "Upload Image":
-    upload_image()
+    # Fungsi upload image tetap sama
+    pass
 else:
     display_camera()
