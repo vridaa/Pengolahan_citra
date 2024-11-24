@@ -130,69 +130,36 @@ class VideoProcessor(VideoProcessorBase):
 
         return av.VideoFrame.from_ndarray(processed_img, format="rgb24")
 
+# Fungsi untuk kamera dengan kategori
 def display_camera():
-    """Displays real-time webcam feed with dynamic processing options and histograms."""
-    # Initialize session state for camera
-    if 'run_camera' not in st.session_state:
-        st.session_state['run_camera'] = False  # Initialize camera state
+    st.subheader("Real-Time Camera Feed with Processing")
+    category = st.selectbox("Select Category", list(categories.keys()))
+    method = st.selectbox("Select Processing Method", categories[category])
 
-    # Attempt to access the camera
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        st.warning("Tidak dapat membuka kamera. Pastikan kamera Anda terhubung.")
-        return  # Exit the function if the camera cannot be accessed
-
-    # Define layout with two columns
-    col1, col2 = st.columns(2)
-    stframe_original = col1.empty()
-    stframe_hist_original = col1.empty()
-    stframe_processed = col2.empty()
-    stframe_hist_processed = col2.empty()
-
-    # Main category selection
-    category = st.selectbox("Pilih Kategori", list(categories.keys()), key="category_select")
-
-    # Sub-method selection based on the main category
-    method = st.selectbox("Pilih Metode Pengolahan", categories[category], key="method_select")
-
-    # Update parameters dynamically based on the selected method
+    # Update parameter berdasarkan metode yang dipilih
     update_parameters(method)
 
-    # Button to start and stop the camera feed
-    if st.button("Mulai Kamera" if not st.session_state['run_camera'] else "Stop Kamera"):
-        st.session_state['run_camera'] = not st.session_state['run_camera']
+    ctx = webrtc_streamer(
+        key="camera",
+        video_processor_factory=VideoProcessor,
+        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+        media_stream_constraints={"video": True, "audio": False},
+    )
 
-    # Main loop for camera feed
-    while st.session_state['run_camera']:
-        ret, frame = cap.read()
-        if not ret:
-            st.warning("Gagal mendapatkan frame dari kamera.")
-            break
+    if ctx.video_processor:
+        ctx.video_processor.method = method
 
-        # Convert frame to RGB format for consistent processing
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    # Menampilkan dua kolom: tampilan asli dan hasil
+    col1, col2 = st.columns(2)
+    if ctx.video_processor:
+        col1.image(ctx.video_processor.recv, caption="Original Frame", channels="RGB", use_column_width=True)
+        col2.image(ctx.video_processor.recv, caption="Processed Frame", channels="RGB", use_column_width=True)
 
-        # Process the frame based on the selected method
-        processed_frame = process_image(frame_rgb, method)
+        # Menampilkan histogram
+    st.markdown("---")
+    st.pyplot(plot_histogram(ctx.video_processor.recv, "Original Histogram"))
+    st.pyplot(plot_histogram(ctx.video_processor.recv, "Processed Histogram"))
 
-        # Display the original frame in the first column
-        stframe_original.image(frame_rgb, caption="Gambar Asli (Real-Time)", channels="RGB", use_column_width=True)
-        stframe_hist_original.pyplot(plot_histogram(frame_rgb, "Histogram Warna (Asli)"))
-
-        # Ensure processed frame has RGB channels for consistency
-        if len(processed_frame.shape) == 2:  # If grayscale, convert to RGB for display
-            processed_frame = cv2.cvtColor(processed_frame, cv2.COLOR_GRAY2RGB)
-
-        # Display the processed frame in the second column
-        stframe_processed.image(processed_frame, caption=f"Gambar Setelah Diolah ({method})", channels="RGB", use_column_width=True)
-        stframe_hist_processed.pyplot(plot_histogram(processed_frame, "Histogram Warna (Setelah Diolah)"))
-
-        # Adding a short delay to reduce CPU load
-        time.sleep(0.1)
-
-    # Release the camera when stopping the feed
-    cap.release()
-    cv2.destroyAllWindows()
 
 
 
